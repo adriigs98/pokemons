@@ -1,0 +1,46 @@
+---
+import Poke from "../components/Poke.astro";
+import Layout from "../layouts/Layout.astro";
+// llegim paràmetre offset (astro configurat com a SSR!)
+let offset = Astro.url.searchParams.get("offset") || 0;
+// el convertim a numeric
+offset = parseInt(offset);
+
+
+//let llista = await fetch('https://api.citybik.es/v2/networks/bicing');
+// executem consulta fetch a pokeapi, amb el offset necessari
+let llista = await fetch(
+	`https://pokeapi.co/api/v2/pokemon?limit=20&offset=${offset}`,);
+// convertim dades rebudes de json >> array en memòria (mena de parse)
+
+llista = await llista.json();
+// de l'objecte rebut ens interessa l'array results
+
+llista = llista.results;
+// preparem links per url anterior/següent
+const prev = `?offset=${offset == 0 ? 0 : offset - 20}`;
+const next = `?offset=${offset + 20}`;
+// creem un array de "promises" fent un nou fetch per cada pokemon per rebre més info
+const promises = await llista.map(async (poke) => {
+	// poke.url conté la url per obtenir més info del pokémon
+	let item = await fetch(poke.url);
+	item = await item.json();
+	// retornem a la llista promises les dades extra per al pokemon (nom, imatge)
+	return {
+		name: poke.name,
+
+		img: item.sprites.other["official-artwork"].front_default,
+	};
+});
+// finalment l'array pokemons ha d'esperar que es compleixin totes les promies (tots elsawaits del map anterior)
+const pokemons = await Promise.all(promises);
+---
+
+<Layout title="Pokemons"/>
+
+	{
+		pokemons.map(pok => <Poke nom={pok.name} foto={pok.img} />)
+	}
+
+</Layout>
+
